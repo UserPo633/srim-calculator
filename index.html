@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>S-RIM 가치평가 시뮬레이터 · Netlify Functions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <main class="container">
+      <section class="hero glass-card">
+        <div class="hero-copy">
+          <span class="eyebrow">S-RIM 가치평가 시뮬레이터</span>
+          <h1>FnGuide 자동 채우기 지원 · Netlify Functions 버전</h1>
+          <p>
+            프론트는 순수 HTML/CSS/JS, 자동 채우기는 <strong>Netlify Functions</strong>로 처리하는 버전입니다.
+            FnGuide URL 또는 종목코드를 넣으면 연결재무제표 기준 값을 자동으로 읽어와서 S-RIM 3단계 시나리오를 계산합니다.
+          </p>
+        </div>
+        <div class="formula-box">
+          <div class="formula-title">S-RIM 공식</div>
+          <div class="formula-line">ω &lt; 1.0 : V = BV + BV × (ROE − ke) × ω / (1 + ke − ω)</div>
+          <div class="formula-line">ω = 1.0 : V = BV + BV × (ROE − ke) / ke</div>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <section class="glass-card form-card">
+          <div class="card-head">
+            <h2>입력값</h2>
+            <span class="head-badge">Functions API 연동</span>
+          </div>
+
+          <div class="notice-box">
+            <div class="notice-title">FnGuide 자동 채우기</div>
+            <p>
+              FnGuide URL 또는 6자리 종목코드를 입력한 뒤 자동 채우기를 누르면,
+              Netlify Function이 FnGuide 페이지를 읽어서 회사명, 연결 기준 지배주주지분, ROE, 발행주식수를 채웁니다.
+            </p>
+            <div class="input-with-button">
+              <input id="sourceInput" type="text" placeholder="예: https://comp.fnguide.com/...gicode=A005930 또는 005930" />
+              <button class="secondary-button" id="fillButton" type="button">자동 채우기</button>
+            </div>
+            <div class="fill-status" id="fillStatus">FnGuide 입력 대기 중</div>
+            <div class="source-meta" id="sourceMeta"></div>
+          </div>
+
+          <form id="simulatorForm">
+            <div class="field-grid">
+              <div class="field field-full">
+                <label for="stockCode">종목코드</label>
+                <input id="stockCode" type="text" placeholder="예: 005930" />
+                <span class="hint">자동 채우기 성공 시 자동 반영</span>
+              </div>
+
+              <div class="field field-full">
+                <label for="companyName">회사명</label>
+                <input id="companyName" type="text" placeholder="예: 삼성전자" />
+                <span class="hint">자동 채우기 성공 시 자동 반영</span>
+              </div>
+
+              <div class="field">
+                <label for="equityEok">지배기업 소유주 지분(억 원)</label>
+                <input id="equityEok" type="text" value="1,230,888" />
+                <span class="hint">연결재무제표 기준</span>
+              </div>
+
+              <div class="field">
+                <label for="roePct">예상 ROE(%)</label>
+                <input id="roePct" type="text" value="12" />
+                <span class="hint">FnGuide 최근 연간 기준 자동 입력 가능</span>
+              </div>
+
+              <div class="field">
+                <label for="requiredRate">요구수익률 (BBB- 5년 금리)(%)</label>
+                <input id="requiredRate" type="text" value="8" />
+                <span class="hint">0보다 커야 함</span>
+              </div>
+
+              <div class="field">
+                <label for="commonShares">보통주 발행주식수(주)</label>
+                <input id="commonShares" type="text" value="204,757,766" />
+                <span class="hint">최신 사업보고서 기준</span>
+              </div>
+
+              <div class="field">
+                <label for="preferredShares">우선주 발행주식수(주)</label>
+                <input id="preferredShares" type="text" value="60,632,342" />
+                <span class="hint">없으면 0 입력</span>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="primary-button" type="submit">가치평가 실행하기</button>
+              <button class="ghost-button" type="button" id="resetButton">기본 예시값 복원</button>
+            </div>
+
+            <div class="error-box" id="errorBox" hidden></div>
+          </form>
+        </section>
+
+        <section class="glass-card result-card">
+          <div class="card-head sticky-head">
+            <h2>평가 결과</h2>
+            <span class="head-badge" id="totalSharesBadge">총 주식수 265,390,108주</span>
+          </div>
+
+          <div class="summary-strip">
+            <div class="summary-item">
+              <div class="summary-label">회사명 / 종목코드</div>
+              <div class="summary-value" id="summaryCompany">-</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">BV</div>
+              <div class="summary-value" id="summaryEquity">1,230,888억</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">ROE / ke</div>
+              <div class="summary-value" id="summaryRates">12% / 8%</div>
+            </div>
+          </div>
+
+          <div class="scenario-list" id="scenarioList"></div>
+
+          <div class="disclaimer">
+            ※ 본 계산기는 참고용이며, 실제 투자 의사결정은 본인의 판단 하에 이루어져야 합니다.<br />
+            ※ FnGuide 응답 구조 변경 또는 차단 시 자동 채우기가 일시적으로 실패할 수 있습니다.
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
